@@ -53,6 +53,66 @@ function ChatList() {
   );
 }
 
+/** Full-screen swipeable gallery (touch swipe on mobile, arrows on desktop). */
+function PhotoGallery({ name, photos, onClose }: { name: string; photos: string[]; onClose: () => void }) {
+  const [index, setIndex] = useState(0);
+  const trackRef = useRef<HTMLDivElement>(null);
+
+  function onScroll() {
+    const el = trackRef.current;
+    if (!el) return;
+    setIndex(Math.round(el.scrollLeft / el.clientWidth));
+  }
+
+  function go(dir: number) {
+    const el = trackRef.current;
+    if (!el) return;
+    const next = Math.max(0, Math.min(photos.length - 1, index + dir));
+    el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-black/95 flex flex-col">
+      <div className="flex items-center justify-between px-5 py-4">
+        <p className="font-display font-semibold">{name}</p>
+        <button onClick={onClose} aria-label="Close gallery"
+          className="h-9 w-9 rounded-full bg-white/10 text-white grid place-items-center">✕</button>
+      </div>
+
+      <div ref={trackRef} onScroll={onScroll}
+        className="flex-1 flex overflow-x-auto snap-x snap-mandatory scrollbar-none"
+        style={{ scrollbarWidth: "none" }}>
+        {photos.map((src, i) => (
+          <div key={i} className="min-w-full snap-center grid place-items-center p-4">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={src} alt={`${name} — photo ${i + 1}`}
+              className="max-h-full max-w-full object-contain rounded-card" />
+          </div>
+        ))}
+      </div>
+
+      {photos.length > 1 && (
+        <>
+          <button onClick={() => go(-1)} aria-label="Previous photo"
+            className={`hidden sm:grid absolute left-4 top-1/2 -translate-y-1/2 h-11 w-11 rounded-full bg-white/10 place-items-center text-xl ${index === 0 ? "opacity-30" : ""}`}>
+            ‹
+          </button>
+          <button onClick={() => go(1)} aria-label="Next photo"
+            className={`hidden sm:grid absolute right-4 top-1/2 -translate-y-1/2 h-11 w-11 rounded-full bg-white/10 place-items-center text-xl ${index === photos.length - 1 ? "opacity-30" : ""}`}>
+            ›
+          </button>
+          <div className="flex justify-center gap-1.5 pb-6 pt-2">
+            {photos.map((_, i) => (
+              <span key={i} className={`h-1.5 rounded-full transition-all ${i === index ? "w-5 bg-plum-500" : "w-1.5 bg-white/25"}`} />
+            ))}
+          </div>
+        </>
+      )}
+    </motion.div>
+  );
+}
+
 function SafetyMenu({ otherId, onClose }: { otherId: string; onClose: () => void }) {
   const [mode, setMode] = useState<"menu" | "report" | "block" | "done">("menu");
   const [reason, setReason] = useState<string>("");
@@ -161,6 +221,7 @@ function ChatRoom({ matchId }: { matchId: string }) {
   const [myId, setMyId] = useState("");
   const [sending, setSending] = useState(false);
   const [safetyOpen, setSafetyOpen] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastTs = useRef<string | null>(null);
 
@@ -223,14 +284,18 @@ function ChatRoom({ matchId }: { matchId: string }) {
 
   const pendingOnMe = (reveal === "REQUESTED_BY_A" || reveal === "REQUESTED_BY_B") && !iRequested;
   const pendingOnThem = (reveal === "REQUESTED_BY_A" || reveal === "REQUESTED_BY_B") && iRequested;
+  const hasPhotos = !!identity?.photos?.length;
 
   return (
     <main className="min-h-dvh flex flex-col max-w-2xl mx-auto">
       <header className="glass !rounded-none sm:!rounded-b-card px-5 py-4 flex items-center gap-4 sticky top-0 z-10">
         <a href="/chat" className="text-mist hover:text-white" aria-label="Back">←</a>
-        {identity?.photos?.[0] ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img src={identity.photos[0]} alt="" className="h-11 w-11 rounded-full object-cover" />
+        {hasPhotos ? (
+          <button onClick={() => setGalleryOpen(true)} aria-label="View photos" className="shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={identity!.photos[0]} alt=""
+              className="h-11 w-11 rounded-full object-cover border border-plum-500/50" />
+          </button>
         ) : (
           <div className="veil-orb h-11 w-11 text-base" aria-hidden />
         )}
@@ -256,6 +321,13 @@ function ChatRoom({ matchId }: { matchId: string }) {
       )}
 
       <AnimatePresence>
+        {galleryOpen && hasPhotos && (
+          <PhotoGallery name={identity!.firstName} photos={identity!.photos}
+            onClose={() => setGalleryOpen(false)} />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {pendingOnMe && (
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
             className="glass mx-4 mt-4 p-4 flex items-center gap-3">
@@ -273,6 +345,11 @@ function ChatRoom({ matchId }: { matchId: string }) {
             </p>
             {identity.instagram && (
               <p className="text-xs text-mist mt-1">Instagram: @{identity.instagram}</p>
+            )}
+            {hasPhotos && (
+              <button onClick={() => setGalleryOpen(true)} className="btn-ghost !py-2 !px-5 text-sm mt-3">
+                View {identity.photos.length} photo{identity.photos.length > 1 ? "s" : ""}
+              </button>
             )}
           </motion.div>
         )}

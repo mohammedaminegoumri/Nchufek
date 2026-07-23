@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, patch } from "@/lib/api";
 
@@ -14,6 +14,28 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
       {children}
     </button>
   );
+}
+
+/** Resize + compress an image in the browser → small JPEG data URL (~100KB). */
+function compressImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const MAX = 800;
+      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("Canvas not supported"));
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", 0.75));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Not a valid image")); };
+    img.src = url;
+  });
 }
 
 export default function Profile() {
@@ -31,7 +53,9 @@ export default function Profile() {
   const [hobbies, setHobbies] = useState<string[]>([]);
   const [traits, setTraits] = useState<string[]>([]);
   const [instagram, setInstagram] = useState("");
-  const [photoUrls, setPhotoUrls] = useState<string[]>(["", "", "", "", "", ""]);
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     api("/me").then((me) => {
@@ -44,15 +68,33 @@ export default function Profile() {
       setHobbies(p.hobbies ?? []);
       setTraits(p.traits ?? []);
       setInstagram(p.instagram ?? "");
-      const urls = [...(p.photoUrls ?? [])];
-      while (urls.length < 6) urls.push("");
-      setPhotoUrls(urls.slice(0, 6));
+      setPhotos(p.photoUrls ?? []);
       setLoaded(true);
     }).catch(() => router.replace("/login"));
   }, [router]);
 
   const toggle = (arr: string[], set: (v: string[]) => void, v: string) =>
     set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
+
+  async function addPhotos(files: FileList | null) {
+    if (!files?.length) return;
+    setUploading(true); setError("");
+    try {
+      const room = 6 - photos.length;
+      const picked = Array.from(files).slice(0, room);
+      const compressed = await Promise.all(picked.map(compressImage));
+      setPhotos((prev) => [...prev, ...compressed].slice(0, 6));
+    } catch (e: any) {
+      setError(e.message ?? "Couldn't read that image");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  function removePhoto(i: number) {
+    setPhotos((prev) => prev.filter((_, x) => x !== i));
+  }
 
   async function save() {
     setSaving(true); setError(""); setSaved(false);
@@ -64,7 +106,7 @@ export default function Profile() {
         personality: personality || null,
         languages, hobbies, traits,
         instagram: instagram.replace(/^@/, "") || null,
-        photoUrls: photoUrls.map((u) => u.trim()).filter(Boolean),
+        photoUrls: photos,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -145,33 +187,44 @@ export default function Profile() {
       <section className="glass p-6 space-y-4">
         <h2 className="font-display font-semibold">Revealed only with mutual consent</h2>
         <p className="text-xs text-mist leading-relaxed">
-          Photos and Instagram stay invisible until both you and a match press reveal.
-          For photos: upload your picture to a free host like <span className="text-white">imgbb.com</span>,
-          copy the <span className="text-white">direct link</span> (ends in .jpg or .png), and paste it below.
+          Your photos and Instagram stay invisible until both you and a match press reveal.
         </p>
         <div>
           <p className="text-sm text-mist mb-2">Instagram username</p>
           <input className="field" value={instagram}
             onChange={(e) => setInstagram(e.target.value)} placeholder="@username" />
         </div>
-        <div className="space-y-2">
-          <p className="text-sm text-mist">Photos (up to 6)</p>
-          {photoUrls.map((u, i) => (
-            <div key={i} className="flex items-center gap-2">
-              {u.trim() ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img src={u} alt="" className="h-10 w-10 rounded-full object-cover shrink-0 border border-white/10" />
-              ) : (
-                <div className="veil-orb h-10 w-10 text-sm shrink-0" aria-hidden />
-              )}
-              <input className="field" value={u} placeholder={`Photo ${i + 1} link`}
-                onChange={(e) => {
-                  const next = [...photoUrls];
-                  next[i] = e.target.value;
-                  setPhotoUrls(next);
-                }} />
-            </div>
-          ))}
+        <div>
+          <p className="text-sm text-mist mb-2">Photos ({photos.length}/6)</p>
+          <div className="grid grid-cols-3 gap-2">
+            {photos.map((src, i) => (
+              <div key={i} className="relative aspect-square">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={src} alt={`Photo ${i + 1}`}
+                  className="h-full w-full object-cover rounded-card border border-white/10" />
+                <button onClick={() => removePhoto(i)} aria-label="Remove photo"
+                  className="absolute -top-2 -right-2 h-7 w-7 rounded-full bg-danger text-white text-sm leading-none">
+                  ✕
+                </button>
+                {i === 0 && (
+                  <span className="absolute bottom-1 left-1 text-[10px] bg-black/70 rounded-full px-2 py-0.5">
+                    Main
+                  </span>
+                )}
+              </div>
+            ))}
+            {photos.length < 6 && (
+              <button onClick={() => fileRef.current?.click()} disabled={uploading}
+                className="aspect-square rounded-card border border-dashed border-white/20 text-mist hover:border-plum-500 hover:text-white transition-colors grid place-items-center text-3xl">
+                {uploading ? <span className="text-sm animate-pulse">…</span> : "+"}
+              </button>
+            )}
+          </div>
+          <input ref={fileRef} type="file" accept="image/*" multiple hidden
+            onChange={(e) => addPhotos(e.target.files)} />
+          <p className="text-xs text-mist/70 mt-2">
+            Photos are compressed on your phone before saving. First photo is your main one.
+          </p>
         </div>
       </section>
 

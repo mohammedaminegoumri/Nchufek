@@ -10,18 +10,90 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Gender { MALE FEMALE }
-enum LookingFor { MALE FEMALE ANYONE }
-enum RelationshipGoal { FRIENDSHIP DATING LONG_TERM SHORT_TERM MARRIAGE }
-enum Habit { NEVER SOCIALLY OFTEN PREFER_NOT_SAY }
-enum EducationLevel { HIGH_SCHOOL BAC LICENCE MASTER DOCTORATE OTHER }
-enum Personality { INTROVERT EXTROVERT AMBIVERT }
-enum ChildrenPref { HAVE WANT DONT_WANT OPEN PREFER_NOT_SAY }
-enum MatchStatus { ACTIVE UNMATCHED }
-enum RevealStatus { NONE REQUESTED_BY_A REQUESTED_BY_B MUTUAL DECLINED }
-enum ReportReason { HARASSMENT SPAM FAKE_PROFILE INAPPROPRIATE_CONTENT UNDERAGE OTHER }
-enum ReportStatus { OPEN RESOLVED DISMISSED }
-enum AccountStatus { ACTIVE PAUSED HIDDEN SUSPENDED DELETED }
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum LookingFor {
+  MALE
+  FEMALE
+  ANYONE
+}
+
+enum RelationshipGoal {
+  FRIENDSHIP
+  DATING
+  LONG_TERM
+  SHORT_TERM
+  MARRIAGE
+}
+
+enum Habit {
+  NEVER
+  SOCIALLY
+  OFTEN
+  PREFER_NOT_SAY
+}
+
+enum EducationLevel {
+  HIGH_SCHOOL
+  BAC
+  LICENCE
+  MASTER
+  DOCTORATE
+  OTHER
+}
+
+enum Personality {
+  INTROVERT
+  EXTROVERT
+  AMBIVERT
+}
+
+enum ChildrenPref {
+  HAVE
+  WANT
+  DONT_WANT
+  OPEN
+  PREFER_NOT_SAY
+}
+
+enum MatchStatus {
+  ACTIVE
+  UNMATCHED
+}
+
+enum RevealStatus {
+  NONE
+  REQUESTED_BY_A
+  REQUESTED_BY_B
+  MUTUAL
+  DECLINED
+}
+
+enum ReportReason {
+  HARASSMENT
+  SPAM
+  FAKE_PROFILE
+  INAPPROPRIATE_CONTENT
+  UNDERAGE
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+enum AccountStatus {
+  ACTIVE
+  PAUSED
+  HIDDEN
+  SUSPENDED
+  DELETED
+}
 
 model User {
   id             String        @id @default(cuid())

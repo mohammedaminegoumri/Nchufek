@@ -1,0 +1,153 @@
+// NCHUFEK? v2 — $0 edition
+// Single Next.js app · Neon free Postgres · no Redis, no SMS
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Gender { MALE FEMALE }
+enum LookingFor { MALE FEMALE ANYONE }
+enum RelationshipGoal { FRIENDSHIP DATING LONG_TERM SHORT_TERM MARRIAGE }
+enum Habit { NEVER SOCIALLY OFTEN PREFER_NOT_SAY }
+enum EducationLevel { HIGH_SCHOOL BAC LICENCE MASTER DOCTORATE OTHER }
+enum Personality { INTROVERT EXTROVERT AMBIVERT }
+enum ChildrenPref { HAVE WANT DONT_WANT OPEN PREFER_NOT_SAY }
+enum MatchStatus { ACTIVE UNMATCHED }
+enum RevealStatus { NONE REQUESTED_BY_A REQUESTED_BY_B MUTUAL DECLINED }
+enum ReportReason { HARASSMENT SPAM FAKE_PROFILE INAPPROPRIATE_CONTENT UNDERAGE OTHER }
+enum ReportStatus { OPEN RESOLVED DISMISSED }
+enum AccountStatus { ACTIVE PAUSED HIDDEN SUSPENDED DELETED }
+
+model User {
+  id             String        @id @default(cuid())
+  email          String        @unique
+  passwordHash   String
+  firstName      String
+  birthDate      DateTime
+  gender         Gender
+  lookingFor     LookingFor
+  goals          RelationshipGoal[]
+  status         AccountStatus @default(ACTIVE)
+  isAdmin        Boolean       @default(false)
+
+  // Approximate location (~1km grid — exact coords never stored)
+  latitude       Float?
+  longitude      Float?
+  city           String?
+  searchRadiusKm Int           @default(30)
+
+  profile        Profile?
+  preferences    Preference?
+
+  matchesAsA     Match[]       @relation("A")
+  matchesAsB     Match[]       @relation("B")
+  messages       Message[]
+  reportsMade    Report[]      @relation("Reporter")
+  reportsAgainst Report[]      @relation("Reported")
+  blocksMade     Block[]       @relation("Blocker")
+  blocksAgainst  Block[]       @relation("Blocked")
+
+  lastSeenAt     DateTime      @default(now())
+  createdAt      DateTime      @default(now())
+  deletedAt      DateTime?
+
+  @@index([status, gender, latitude, longitude])
+}
+
+model Profile {
+  id            String   @id @default(cuid())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String   @unique
+  bio           String?
+  favoriteQuote String?
+  heightCm      Int?
+  languages     String[]
+  religion      String?
+  smoking       Habit?
+  drinking      Habit?
+  occupation    String?
+  university    String?
+  education     EducationLevel?
+  hobbies       String[]
+  music         String[]
+  movies        String[]
+  personality   Personality?
+  traits        String[]
+  mbti          String?
+  zodiac        String?
+  children      ChildrenPref?
+  instagram     String?   // only exposed after mutual reveal
+  photoUrls     String[]  // external free image URLs; hidden until mutual reveal
+}
+
+model Preference {
+  id           String  @id @default(cuid())
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String  @unique
+  ageMin       Int     @default(18)
+  ageMax       Int     @default(45)
+  smokingOk    Boolean @default(true)
+  drinkingOk   Boolean @default(true)
+  minCompatibility Int @default(0)
+}
+
+model Match {
+  id                  String       @id @default(cuid())
+  userA               User         @relation("A", fields: [userAId], references: [id], onDelete: Cascade)
+  userAId             String
+  userB               User         @relation("B", fields: [userBId], references: [id], onDelete: Cascade)
+  userBId             String
+  score               Float
+  scoreBreakdown      Json?
+  status              MatchStatus  @default(ACTIVE)
+  reveal              RevealStatus @default(NONE)
+  revealRequestedById String?
+  messages            Message[]
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  @@unique([userAId, userBId])
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  match      Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  matchId    String
+  sender     User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  senderId   String
+  ciphertext String   // AES-256-GCM at rest
+  iv         String
+  seenAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([matchId, createdAt])
+}
+
+model Report {
+  id         String       @id @default(cuid())
+  reporter   User         @relation("Reporter", fields: [reporterId], references: [id])
+  reporterId String
+  reported   User         @relation("Reported", fields: [reportedId], references: [id])
+  reportedId String
+  reason     ReportReason
+  details    String?
+  status     ReportStatus @default(OPEN)
+  createdAt  DateTime     @default(now())
+
+  @@index([reportedId, status])
+}
+
+model Block {
+  id        String @id @default(cuid())
+  blocker   User   @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockerId String
+  blocked   User   @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+  blockedId String
+
+  @@unique([blockerId, blockedId])
+}

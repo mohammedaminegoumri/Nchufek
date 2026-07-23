@@ -1,2 +1,2 @@
 import { destroySession, json } from "@/lib/core";
-export async function POST() { destroySession(); return json({ ok: true }); }
+export async function POST() { await destroySession(); return json({ ok: true }); }

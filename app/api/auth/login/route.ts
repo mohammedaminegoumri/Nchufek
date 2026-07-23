@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     return json({ error: "Email or password is incorrect" }, 401);
   if (user.status === "SUSPENDED") return json({ error: "Account suspended" }, 403);
 
-  createSession(user.id, user.isAdmin);
+  await createSession(user.id, user.isAdmin);
   const onboarded = user.latitude != null;
   return json({ ok: true, onboarded });
 }

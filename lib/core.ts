@@ -16,20 +16,23 @@ if (process.env.NODE_ENV !== "production") g.prisma = prisma;
 const SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
 const COOKIE = "nch_session";
 
-export function createSession(userId: string, isAdmin = false) {
+export async function createSession(userId: string, isAdmin = false) {
   const token = jwt.sign({ sub: userId, isAdmin }, SECRET, { expiresIn: "30d" });
-  cookies().set(COOKIE, token, {
+  const store = await cookies();
+  store.set(COOKIE, token, {
     httpOnly: true, secure: process.env.NODE_ENV === "production",
     sameSite: "lax", path: "/", maxAge: 30 * 24 * 3600,
   });
 }
 
-export function destroySession() {
-  cookies().delete(COOKIE);
+export async function destroySession() {
+  const store = await cookies();
+  store.delete(COOKIE);
 }
 
-export function getSession(): { userId: string; isAdmin: boolean } | null {
-  const token = cookies().get(COOKIE)?.value;
+export async function getSession(): Promise<{ userId: string; isAdmin: boolean } | null> {
+  const store = await cookies();
+  const token = store.get(COOKIE)?.value;
   if (!token) return null;
   try {
     const p = jwt.verify(token, SECRET) as { sub: string; isAdmin: boolean };
@@ -39,7 +42,7 @@ export function getSession(): { userId: string; isAdmin: boolean } | null {
 
 /** Auth guard for route handlers. Throws a Response on failure. */
 export async function requireUser() {
-  const s = getSession();
+  const s = await getSession();
   if (!s) throw new Response(JSON.stringify({ error: "Sign in first" }), { status: 401 });
   const user = await prisma.user.findUnique({ where: { id: s.userId } });
   if (!user || user.status === "DELETED")

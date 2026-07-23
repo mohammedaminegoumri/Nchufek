@@ -34,6 +34,6 @@ export async function POST(req: Request) {
       preferences: { create: {} },
     },
   });
-  createSession(user.id, user.isAdmin);
+  await createSession(user.id, user.isAdmin);
   return json({ ok: true, userId: user.id }, 201);
 }

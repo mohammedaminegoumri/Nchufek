@@ -21,7 +21,6 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       orderBy: { createdAt: "asc" },
       take: 200,
     });
-    // Mark the other person's messages as seen
     prisma.message.updateMany({
       where: { matchId: match.id, senderId: { not: user.id }, seenAt: null },
       data: { seenAt: new Date() },
@@ -33,6 +32,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     return json({
       reveal: match.reveal,
       iRequestedReveal: match.revealRequestedById === user.id,
+      otherId,
       otherOnline: other ? Date.now() - other.lastSeenAt.getTime() < 2 * 60_000 : false,
       messages: messages.map((m) => ({
         id: m.id, senderId: m.senderId,

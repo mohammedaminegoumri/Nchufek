@@ -11,6 +11,10 @@ interface Msg {
 }
 
 const POLL_MS = 2500;
+const REPORT_REASONS = [
+  ["HARASSMENT", "Harassment"], ["SPAM", "Spam"], ["FAKE_PROFILE", "Fake profile"],
+  ["INAPPROPRIATE_CONTENT", "Inappropriate content"], ["UNDERAGE", "Underage"], ["OTHER", "Other"],
+] as const;
 
 function ChatList() {
   const [items, setItems] = useState<any[] | null>(null);
@@ -39,15 +43,104 @@ function ChatList() {
               <p className="font-display font-semibold">
                 {m.reveal === "MUTUAL" ? "Revealed match" : "Hidden match"} · {Math.round(m.score)}%
               </p>
-              <p className="text-xs text-mist">
-                {new Date(m.lastActivity).toLocaleString()}
-              </p>
+              <p className="text-xs text-mist">{new Date(m.lastActivity).toLocaleString()}</p>
             </div>
             {m.unread && <span className="h-2.5 w-2.5 rounded-full bg-plum-500" aria-label="Unread" />}
           </a>
         ))}
       </div>
     </main>
+  );
+}
+
+function SafetyMenu({ otherId, onClose }: { otherId: string; onClose: () => void }) {
+  const [mode, setMode] = useState<"menu" | "report" | "block" | "done">("menu");
+  const [reason, setReason] = useState<string>("");
+  const [details, setDetails] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function submitReport() {
+    setBusy(true);
+    try {
+      await post("/reports", { reportedId: otherId, reason, details: details || undefined });
+      setMode("done");
+    } finally { setBusy(false); }
+  }
+
+  async function submitBlock() {
+    setBusy(true);
+    try {
+      await post("/blocks", { blockedId: otherId });
+      location.href = "/discover";
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-end sm:place-items-center bg-black/70 p-4"
+      onClick={onClose}>
+      <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
+        className="glass w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+        {mode === "menu" && (
+          <div className="space-y-3">
+            <h2 className="font-display font-semibold text-lg">Safety</h2>
+            <button onClick={() => setMode("report")} className="btn-ghost w-full text-sm">
+              Report this person
+            </button>
+            <button onClick={() => setMode("block")}
+              className="w-full rounded-card border border-danger/40 text-danger py-3 text-sm">
+              Block this person
+            </button>
+            <button onClick={onClose} className="w-full text-mist text-sm py-2">Cancel</button>
+          </div>
+        )}
+
+        {mode === "report" && (
+          <div className="space-y-4">
+            <h2 className="font-display font-semibold text-lg">What happened?</h2>
+            <div className="flex flex-wrap gap-2">
+              {REPORT_REASONS.map(([v, label]) => (
+                <button key={v} type="button" className="chip" data-on={reason === v}
+                  onClick={() => setReason(v)}>{label}</button>
+              ))}
+            </div>
+            <textarea className="field resize-none" rows={3} maxLength={1000}
+              placeholder="Anything else we should know? (optional)"
+              value={details} onChange={(e) => setDetails(e.target.value)} />
+            <button onClick={submitReport} disabled={!reason || busy} className="btn-primary w-full">
+              {busy ? "Sending…" : "Send report"}
+            </button>
+            <button onClick={() => setMode("menu")} className="w-full text-mist text-sm py-1">Back</button>
+          </div>
+        )}
+
+        {mode === "block" && (
+          <div className="space-y-4">
+            <h2 className="font-display font-semibold text-lg">Block this person?</h2>
+            <p className="text-sm text-mist leading-relaxed">
+              The conversation ends immediately, you disappear from each other&apos;s matches,
+              and they can&apos;t contact you again. They won&apos;t be notified.
+            </p>
+            <button onClick={submitBlock} disabled={busy}
+              className="w-full rounded-card bg-danger text-white py-3 text-sm font-medium">
+              {busy ? "Blocking…" : "Yes, block"}
+            </button>
+            <button onClick={() => setMode("menu")} className="w-full text-mist text-sm py-1">Back</button>
+          </div>
+        )}
+
+        {mode === "done" && (
+          <div className="space-y-4 text-center">
+            <p className="text-success font-medium">Report sent. Thank you.</p>
+            <p className="text-sm text-mist">Every report is reviewed. Do you also want to block them?</p>
+            <button onClick={() => setMode("block")}
+              className="w-full rounded-card border border-danger/40 text-danger py-3 text-sm">
+              Block this person
+            </button>
+            <button onClick={onClose} className="w-full text-mist text-sm py-2">Close</button>
+          </div>
+        )}
+      </motion.div>
+    </div>
   );
 }
 
@@ -63,9 +156,11 @@ function ChatRoom({ matchId }: { matchId: string }) {
   const [reveal, setReveal] = useState("NONE");
   const [iRequested, setIRequested] = useState(false);
   const [otherOnline, setOtherOnline] = useState(false);
+  const [otherId, setOtherId] = useState("");
   const [identity, setIdentity] = useState<{ firstName: string; photos: string[]; instagram: string | null } | null>(null);
   const [myId, setMyId] = useState("");
   const [sending, setSending] = useState(false);
+  const [safetyOpen, setSafetyOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastTs = useRef<string | null>(null);
 
@@ -74,12 +169,12 @@ function ChatRoom({ matchId }: { matchId: string }) {
   }, [matchId]);
 
   const poll = useCallback(async (initial = false) => {
-
     const q = !initial && lastTs.current ? `?after=${encodeURIComponent(lastTs.current)}` : "";
     const d = await api(`/matches/${matchId}/messages${q}`);
     setReveal(d.reveal);
     setIRequested(d.iRequestedReveal);
     setOtherOnline(d.otherOnline);
+    setOtherId(d.otherId);
     if (d.reveal === "MUTUAL") loadIdentity();
     if (d.messages.length) {
       lastTs.current = d.messages[d.messages.length - 1].createdAt;
@@ -91,14 +186,13 @@ function ChatRoom({ matchId }: { matchId: string }) {
   }, [matchId, loadIdentity]);
 
   useEffect(() => {
-
     api("/me").then((me) => setMyId(me.id)).catch(() => (location.href = "/login"));
-    poll(true);
+    poll(true).catch(() => (location.href = "/chat"));
     const t = setInterval(() => {
-      if (document.visibilityState === "visible") poll();
+      if (document.visibilityState === "visible") poll().catch(() => {});
     }, POLL_MS);
     return () => clearInterval(t);
-  }, [matchId, poll]);
+  }, [poll]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
@@ -111,8 +205,8 @@ function ChatRoom({ matchId }: { matchId: string }) {
       const m = await post<Msg>(`/matches/${matchId}/messages`, { text });
       lastTs.current = m.createdAt;
       setMessages((prev) => [...prev, m]);
-    } catch (e: any) {
-      setInput(text); // give the words back on failure
+    } catch {
+      setInput(text);
     } finally { setSending(false); }
   }
 
@@ -133,7 +227,7 @@ function ChatRoom({ matchId }: { matchId: string }) {
   return (
     <main className="min-h-dvh flex flex-col max-w-2xl mx-auto">
       <header className="glass !rounded-none sm:!rounded-b-card px-5 py-4 flex items-center gap-4 sticky top-0 z-10">
-        <a href="/discover" className="text-mist hover:text-white" aria-label="Back">←</a>
+        <a href="/chat" className="text-mist hover:text-white" aria-label="Back">←</a>
         {identity?.photos?.[0] ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img src={identity.photos[0]} alt="" className="h-11 w-11 rounded-full object-cover" />
@@ -153,7 +247,13 @@ function ChatRoom({ matchId }: { matchId: string }) {
           <button onClick={requestReveal} className="btn-ghost !py-2 !px-4 text-sm">Reveal me</button>
         )}
         {pendingOnThem && <span className="text-xs text-mist">Reveal sent ✓</span>}
+        <button onClick={() => setSafetyOpen(true)} aria-label="Safety options"
+          className="text-mist hover:text-white text-xl leading-none px-1">⋯</button>
       </header>
+
+      {safetyOpen && otherId && (
+        <SafetyMenu otherId={otherId} onClose={() => setSafetyOpen(false)} />
+      )}
 
       <AnimatePresence>
         {pendingOnMe && (

@@ -1,10 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Space_Grotesk, Inter } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
-
 const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display", weight: ["500", "600", "700"] });
 const body = Inter({ subsets: ["latin"], variable: "--font-body" });
-
 export const metadata: Metadata = {
   title: "NCHUFEK? — Meet the person before judging the picture",
   description:
@@ -16,12 +15,18 @@ export const metadata: Metadata = {
     locale: "fr_MA",
   },
 };
-
 export const viewport: Viewport = { themeColor: "#210D26" };
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" dir="ltr">
+      <head>
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6797042266624762"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
+      </head>
       <body className={`${display.variable} ${body.variable} font-body min-h-dvh`}>
         <div className="aurora" aria-hidden />
         {children}

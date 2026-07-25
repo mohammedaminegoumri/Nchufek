@@ -1,0 +1,3 @@
+:0F%X($"A>v6i}4`y1K6JS>"8^fl;eQZ*~p1l-ZH     JWT SEC
+
+postgresql://neondb_owner:npg_o2Cajb4dHGDv@ep-damp-wildflower-zaryxp73.c-2.eu-west-2.aws.neon.tech/neondb?sslmode=require

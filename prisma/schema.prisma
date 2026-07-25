@@ -92,6 +92,7 @@ enum AccountStatus {
   PAUSED
   HIDDEN
   SUSPENDED
+  BANNED    // ADDED — needed so admin can permanently ban, distinct from soft SUSPENDED
   DELETED
 }
 
@@ -106,6 +107,8 @@ model User {
   goals          RelationshipGoal[]
   status         AccountStatus @default(ACTIVE)
   isAdmin        Boolean       @default(false)
+  isShadowBanned Boolean       @default(false)  // ADDED — writes silently dropped, profile looks normal to self
+  isVerified     Boolean       @default(false)  // ADDED — manual/face verification badge
 
   // Approximate location (~1km grid — exact coords never stored)
   latitude       Float?
@@ -121,8 +124,10 @@ model User {
   messages       Message[]
   reportsMade    Report[]      @relation("Reporter")
   reportsAgainst Report[]      @relation("Reported")
+  reportsResolved Report[]     @relation("ReportResolver")  // ADDED — admin who closed the report
   blocksMade     Block[]       @relation("Blocker")
   blocksAgainst  Block[]       @relation("Blocked")
+  auditLogs      AuditLog[]                                  // ADDED
 
   lastSeenAt     DateTime      @default(now())
   createdAt      DateTime      @default(now())
@@ -209,6 +214,9 @@ model Report {
   reason     ReportReason
   details    String?
   status     ReportStatus @default(OPEN)
+  resolvedById String?                                                            // ADDED
+  resolvedBy   User?      @relation("ReportResolver", fields: [resolvedById], references: [id])  // ADDED
+  resolvedAt DateTime?                                                            // ADDED
   createdAt  DateTime     @default(now())
 
   @@index([reportedId, status])
@@ -222,4 +230,17 @@ model Block {
   blockedId String
 
   @@unique([blockerId, blockedId])
+}
+
+// ADDED — lightweight trail of admin moderation actions
+model AuditLog {
+  id         String   @id @default(cuid())
+  actor      User     @relation(fields: [actorId], references: [id])
+  actorId    String
+  action     String   // e.g. "report:resolve_and_suspend", "user:ban"
+  targetType String   // "Report" | "User"
+  targetId   String
+  createdAt  DateTime @default(now())
+
+  @@index([targetType, targetId])
 }

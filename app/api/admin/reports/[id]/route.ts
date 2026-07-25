@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ReportStatus, AccountStatus } from "@prisma/client";
 import { requireAdmin, adminJsonError, prisma, json } from "@/lib/admin";
 
 const bodySchema = z.object({
@@ -16,7 +17,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     const report = await prisma.report.findUnique({ where: { id } });
     if (!report) return json({ error: "Report not found" }, 404);
 
-    const newStatus = action === "dismiss" ? "DISMISSED" : "RESOLVED";
+    const newStatus: ReportStatus =
+      action === "dismiss" ? ReportStatus.DISMISSED : ReportStatus.RESOLVED;
 
     const result = await prisma.$transaction(async (tx) => {
       const updated = await tx.report.update({
@@ -27,13 +29,13 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       if (action === "resolve_and_suspend") {
         await tx.user.update({
           where: { id: report.reportedId },
-          data: { status: "SUSPENDED" },
+          data: { status: AccountStatus.SUSPENDED },
         });
       }
       if (action === "resolve_and_ban") {
         await tx.user.update({
           where: { id: report.reportedId },
-          data: { status: "BANNED" },
+          data: { status: AccountStatus.BANNED },
         });
       }
 
@@ -44,7 +46,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
           targetType: "Report",
           targetId: id,
         },
-      }).catch(() => {}); // no-op if you don't have an AuditLog model wired yet
+      });
 
       return updated;
     });

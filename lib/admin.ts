@@ -6,7 +6,7 @@
  *  - User model has a `status` enum/string: "ACTIVE" | "SUSPENDED" | "BANNED"
  *  - User model has a `isShadowBanned` boolean
  *  - Report model has: id, reporterId, reportedId, reason, details, status
- *    ("PENDING" | "RESOLVED" | "DISMISSED"), createdAt, and relations
+ *    ("OPEN" | "RESOLVED" | "DISMISSED"), createdAt, and relations
  *    `reporter` and `reported` pointing back to User
  *
  * If your field names differ, do a find-and-replace across this folder —

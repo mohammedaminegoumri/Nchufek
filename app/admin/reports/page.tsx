@@ -8,13 +8,19 @@ type Report = {
   details?: string;
   status: string;
   createdAt: string;
-  reporter: { id: string; phone: string; displayName?: string };
-  reported: { id: string; phone: string; displayName?: string; status: string; reportCount: number };
+  reporter: { id: string; email: string; firstName?: string };
+  reported: {
+    id: string;
+    email: string;
+    firstName?: string;
+    status: string;
+    _count: { reportsAgainst: number };
+  };
 };
 
 export default function ReportsPage() {
   const [reports, setReports] = useState<Report[]>([]);
-  const [filter, setFilter] = useState("PENDING");
+  const [filter, setFilter] = useState("OPEN");
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -45,7 +51,7 @@ export default function ReportsPage() {
       <p className="text-white/50 mb-6">Review and act on user reports.</p>
 
       <div className="flex gap-2 mb-6">
-        {["PENDING", "RESOLVED", "DISMISSED", "ALL"].map((s) => (
+        {["OPEN", "RESOLVED", "DISMISSED", "ALL"].map((s) => (
           <button
             key={s}
             onClick={() => setFilter(s)}
@@ -75,13 +81,13 @@ export default function ReportsPage() {
             <div className="flex justify-between items-start mb-3">
               <div>
                 <div className="font-semibold">
-                  {r.reported.displayName || r.reported.phone}{" "}
+                  {r.reported.firstName || r.reported.email}{" "}
                   <span className="text-white/40 text-sm font-normal">
-                    ({r.reported.reportCount} reports total · status: {r.reported.status})
+                    ({r.reported._count.reportsAgainst} reports total · status: {r.reported.status})
                   </span>
                 </div>
                 <div className="text-white/50 text-sm mt-1">
-                  Reported by {r.reporter.displayName || r.reporter.phone} ·{" "}
+                  Reported by {r.reporter.firstName || r.reporter.email} ·{" "}
                   {new Date(r.createdAt).toLocaleString()}
                 </div>
               </div>
@@ -95,7 +101,7 @@ export default function ReportsPage() {
               {r.details && <p className="text-white/60 mt-1">{r.details}</p>}
             </div>
 
-            {r.status === "PENDING" && (
+            {r.status === "OPEN" && (
               <div className="flex gap-2 flex-wrap">
                 <ActionBtn busy={busyId === r.id} onClick={() => act(r.id, "dismiss")}>
                   Dismiss

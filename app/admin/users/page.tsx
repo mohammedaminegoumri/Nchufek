@@ -4,13 +4,13 @@ import { useEffect, useState, useCallback } from "react";
 
 type User = {
   id: string;
-  phone: string;
-  displayName?: string;
+  email: string;
+  firstName?: string;
   status: string;
   isShadowBanned: boolean;
   isVerified: boolean;
-  reportCount: number;
   createdAt: string;
+  _count: { reportsAgainst: number };
 };
 
 export default function UsersPage() {
@@ -56,7 +56,7 @@ export default function UsersPage() {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Search phone or name…"
+          placeholder="Search email or first name…"
           className="flex-1 rounded-xl bg-white/[0.05] border border-white/10 px-4 py-3 text-sm outline-none focus:border-[#84319B]"
         />
         <select
@@ -88,13 +88,13 @@ export default function UsersPage() {
             {users.map((u) => (
               <tr key={u.id} className="border-t border-white/5">
                 <td className="px-4 py-3">
-                  <div className="font-medium">{u.displayName || "—"}</div>
-                  <div className="text-white/40 text-xs">{u.phone}</div>
+                  <div className="font-medium">{u.firstName || "—"}</div>
+                  <div className="text-white/40 text-xs">{u.email}</div>
                 </td>
                 <td className="px-4 py-3">
                   <StatusPill status={u.status} shadow={u.isShadowBanned} />
                 </td>
-                <td className="px-4 py-3">{u.reportCount}</td>
+                <td className="px-4 py-3">{u._count.reportsAgainst}</td>
                 <td className="px-4 py-3 text-white/50">
                   {new Date(u.createdAt).toLocaleDateString()}
                 </td>

@@ -1,4 +1,7 @@
+import { AccountStatus, Prisma } from "@prisma/client";
 import { requireAdmin, adminJsonError, prisma, json } from "@/lib/admin";
+
+const VALID_STATUSES = Object.values(AccountStatus) as string[];
 
 /** GET /api/admin/users?q=&status=&page=1 */
 export async function GET(req: Request) {
@@ -6,16 +9,18 @@ export async function GET(req: Request) {
     await requireAdmin();
     const { searchParams } = new URL(req.url);
     const q = searchParams.get("q")?.trim();
-    const status = searchParams.get("status"); // ACTIVE | SUSPENDED | BANNED | null(=all)
+    const statusParam = searchParams.get("status"); // ACTIVE | SUSPENDED | BANNED | ... | null(=all)
     const page = Math.max(1, Number(searchParams.get("page") || 1));
     const pageSize = 25;
 
-    const where: any = {};
-    if (status) where.status = status;
+    const where: Prisma.UserWhereInput = {};
+    if (statusParam && VALID_STATUSES.includes(statusParam)) {
+      where.status = statusParam as AccountStatus;
+    }
     if (q) {
       where.OR = [
-        { phone: { contains: q, mode: "insensitive" } },
-        { displayName: { contains: q, mode: "insensitive" } },
+        { email: { contains: q, mode: "insensitive" } },
+        { firstName: { contains: q, mode: "insensitive" } },
       ];
     }
 
@@ -27,13 +32,13 @@ export async function GET(req: Request) {
         take: pageSize,
         select: {
           id: true,
-          phone: true,
-          displayName: true,
+          email: true,
+          firstName: true,
           status: true,
           isShadowBanned: true,
           isVerified: true,
-          reportCount: true,
           createdAt: true,
+          _count: { select: { reportsAgainst: true } },
         },
       }),
       prisma.user.count({ where }),

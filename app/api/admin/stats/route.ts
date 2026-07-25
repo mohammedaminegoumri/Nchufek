@@ -21,8 +21,8 @@ export async function GET() {
       prisma.user.count({ where: { createdAt: { gte: since24h } } }),
       prisma.user.count({ where: { createdAt: { gte: since7d } } }),
       prisma.match.count({ where: { status: "ACTIVE" } }),
-      prisma.match.count({ where: { revealed: true } }).catch(() => 0),
-      prisma.report.count({ where: { status: "PENDING" } }),
+      prisma.match.count({ where: { reveal: "MUTUAL" } }),
+      prisma.report.count({ where: { status: "OPEN" } }),
       prisma.user.count({ where: { status: "SUSPENDED" } }),
       prisma.user.count({ where: { isShadowBanned: true } }),
     ]);

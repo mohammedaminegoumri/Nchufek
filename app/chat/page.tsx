@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { api, post } from "@/lib/api";
+import AdSenseAd from "@/components/AdSenseAd";
 
 interface Msg {
   id: string; senderId: string; text: string;
@@ -49,6 +50,7 @@ function ChatList() {
           </a>
         ))}
       </div>
+      <AdSenseAd />
     </main>
   );
 }
@@ -177,8 +179,8 @@ function SafetyMenu({ otherId, onClose }: { otherId: string; onClose: () => void
           <div className="space-y-4">
             <h2 className="font-display font-semibold text-lg">Block this person?</h2>
             <p className="text-sm text-mist leading-relaxed">
-              The conversation ends immediately, you disappear from each other&apos;s matches,
-              and they can&apos;t contact you again. They won&apos;t be notified.
+              The conversation ends immediately, you disappear from each other's matches,
+              and they can't contact you again. They won't be notified.
             </p>
             <button onClick={submitBlock} disabled={busy}
               className="w-full rounded-card bg-danger text-white py-3 text-sm font-medium">

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { post } from "@/lib/api";
+import AdSenseAd from "@/components/AdSenseAd";
 
 interface BlindCard {
   candidateId: string;
@@ -307,9 +308,13 @@ export default function Discover() {
                 </motion.article>
               ))}
             </div>
+
+            <AdSenseAd />
           </motion.section>
         )}
       </AnimatePresence>
+
+      <AdSenseAd />
     </main>
   );
 }

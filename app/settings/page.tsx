@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, patch, post } from "@/lib/api";
+import AdSenseAd from "@/components/AdSenseAd";
 
 export default function Settings() {
   const router = useRouter();
@@ -99,7 +100,7 @@ export default function Settings() {
         </div>
 
         <p className="text-xs text-mist">
-          Paused or Hidden: you stop appearing in anyone&apos;s matches.
+          Paused or Hidden: you stop appearing in anyone's matches.
         </p>
       </section>
 
@@ -142,6 +143,8 @@ export default function Settings() {
           </div>
         )}
       </section>
+
+      <AdSenseAd />
     </main>
   );
 }

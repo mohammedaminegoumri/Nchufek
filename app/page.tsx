@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
+import AdSenseAd from "@/components/AdSenseAd";
 
-/* ─────────────────────────── Landing ─────────────────────────── */
+/* ───────────────────────── Landing ───────────────────────── */
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -17,10 +18,12 @@ export default function Landing() {
       <Nav />
       <Hero />
       <Stats />
+      <AdSenseAd />
       <Features />
       <HowItWorks />
       <Testimonials />
       <Faq />
+      <AdSenseAd />
       <Footer />
     </main>
   );
@@ -61,7 +64,7 @@ function Hero() {
         className="mt-6 text-xl sm:text-2xl text-mist max-w-xl mx-auto leading-relaxed">
         Meet someone.
         <br />
-        <span className="text-white">Not someone&apos;s Instagram.</span>
+        <span className="text-white">Not someone's Instagram.</span>
       </motion.p>
 
       <motion.div variants={fadeUp} initial="hidden" animate="show" custom={3}

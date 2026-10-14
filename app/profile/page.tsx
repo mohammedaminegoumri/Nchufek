@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, patch } from "@/lib/api";
+import AdSenseAd from "@/components/AdSenseAd";
 
 const LANGS = ["darija", "arabic", "french", "english", "spanish"];
 const HOBBIES = ["football","surfing","reading","cooking","photography","gym","hiking","gaming","music","travel","volunteering","coding","art","pets"];
@@ -227,6 +228,8 @@ export default function Profile() {
           </p>
         </div>
       </section>
+
+      <AdSenseAd />
 
       {error && <p className="text-sm text-danger">{error}</p>}
       <button onClick={save} disabled={saving} className="btn-primary w-full">
